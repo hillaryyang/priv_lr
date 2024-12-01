@@ -1,2 +1,2 @@
 # private_lr
-Code for linear regression with DP/Pac guarantee. 
+Private linear regression with DP/PAC
