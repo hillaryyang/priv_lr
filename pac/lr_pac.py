@@ -75,7 +75,7 @@ def membership_pac(train_data, mi, learn_basis, alpha=None, eta = 1e-2):
         learned_noise = membership_privacy(train_data, run_lr, mi, learn_basis, alpha)
 
     while not converged:
-        # sample the training data
+        # sample training data
         _train_x, _train_y = get_samples_safe(train_x, train_y, n_samples=len(train_x))
 
         r2_sampling = []
@@ -93,7 +93,7 @@ def membership_pac(train_data, mi, learn_basis, alpha=None, eta = 1e-2):
             # evaluate the model
             pred = model.predict(_train_x)
 
-            # get the rmse and r2 values
+            # get rmse and r2 values
             rmse_val = root_mean_squared_error(_train_y, pred)
             r2_val = r2_score(_train_y, pred)
 
