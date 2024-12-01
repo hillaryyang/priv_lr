@@ -15,11 +15,11 @@ class lrmodel(nn.Module):
     return self.linear(x)
   
 # evaluates ols model
-def eval_ols(x, y, alpha = None, n_trials = 100000):
+def eval_ols(x, y, n_trials = 100000):
   r2_list = []
   rmse_list = []
 
-  # train the model
+  # train
   for i in range(n_trials):
     # sample x and y
     idx = np.random.choice(x.shape[0], int(0.5 * len(x)), replace=False)

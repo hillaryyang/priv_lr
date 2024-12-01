@@ -41,7 +41,6 @@ def eval_dp_lr(model, optimizer, criterion, data_loader, data, eta = 1e-2, **par
     data_loader_copy = DataLoader(data_loader, batch_size=batch_size, shuffle=True)
 
     #train 
-    # model_copy = train_dp_lr(model_copy, optimizer_copy, criterion, data_loader_copy, epochs, epsilon, delta, norm_clip)
     priv_model, priv_optimizer, priv_data_loader = privatize(model_copy, optimizer_copy, data_loader_copy, epochs, epsilon, delta, norm_clip)
 
     # training the model
