@@ -2,9 +2,7 @@ import numpy as np
 import statistics
 import warnings
 warnings.filterwarnings("ignore")
-from sklearn.linear_model import LinearRegression
-from sklearn.linear_model import Ridge
-from sklearn.linear_model import Lasso
+from sklearn.linear_model import LinearRegression, Ridge, Lasso
 
 from sklearn.metrics import r2_score, root_mean_squared_error
 from private import membership_privacy, privatize, get_samples_safe
@@ -47,7 +45,7 @@ def train_lr(data, config=None, seed=None):
     Run linear regression on the training data
     Return: the learned model
     """
-    # train the model
+    # train
     model, lr_params = run_lr(data, config, seed)
 
     return model
@@ -62,7 +60,6 @@ def membership_pac(train_data, mi, learn_basis, alpha=None, eta = 1e-2):
     """
     train_x, train_y = train_data
 
-    # lists to store avg stats for each sampling
     r2_list = []
     rmse_list = []
 
@@ -73,10 +70,8 @@ def membership_pac(train_data, mi, learn_basis, alpha=None, eta = 1e-2):
 
     # add noise
     if alpha == None:
-        # print(f"Learning PAC membership noise with OLS...")
         learned_noise = membership_privacy(train_data, run_lr, mi, learn_basis)
     else:
-        # print(f"Learning PAC membership noise with regularization...")
         learned_noise = membership_privacy(train_data, run_lr, mi, learn_basis, alpha)
 
     while not converged:
@@ -109,11 +104,6 @@ def membership_pac(train_data, mi, learn_basis, alpha=None, eta = 1e-2):
         # add values for this sampling to list
         r2_list.append(np.mean(r2_sampling))
         rmse_list.append(np.mean(rmse_sampling))
-
-        # print(f"trial: {trial}, last avg added: {np.mean(rmse_sampling)}")
-
-        if trial == 20 and cur_mean > 2:
-            converged = True
 
         # convergence testing
         cur_mean = np.mean(rmse_list)

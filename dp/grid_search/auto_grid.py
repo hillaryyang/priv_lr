@@ -2,8 +2,8 @@ import ssl
 import warnings
 warnings.simplefilter("ignore")
 import torch.nn as nn
-import torch.optim as optim
 from itertools import product
+import torch.optim as optim
 from torch.utils.data import DataLoader
 
 from lr_dp import lrmodel, eval_dp_lr
@@ -15,32 +15,29 @@ from data_loader import gen_auto
 # ignore ssl certificate verification
 ssl._create_default_https_context = ssl._create_unverified_context
 
-#non normalized
+# parameter grid
 epochs = [1, 5, 10, 20, 30]
 norm_clip = []
 batch_size = [2, 4, 8, 16, 32]
 learning_rate = []
 
-for i in range(0, 7):
+for i in range(0, 8):
     norm_clip.append(10 ** i)
 
-for i in range(-8, -1):
+for i in range(-8, 0):
     learning_rate.append(10 ** i)
-
 
 # get parameter combinations
 combos = list(product(epochs, norm_clip, batch_size, learning_rate))
 
-# epsilon_list = [0.08002347672, 0.2006525135, 0.6190238237, 1.098598955, 1.734589291, 2.944428453, 3.891810094]
-epsilon = 2.944428453
+epsilon = 1.098598955
 delta = 1e-3
 
 # load data
-x, y, data_loader = gen_auto(normalization=False)
+x, y, data_loader = gen_auto(norm = True)
 
 print(f"For epsilon {epsilon}:")
 
-# initialize variables to track the best parameters
 best_rmse = float('inf')
 best_params = None
 

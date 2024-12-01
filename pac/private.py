@@ -4,7 +4,6 @@ from util import get_samples_safe
 from numpy.linalg import svd
 
 def compute_basis(data, mechanism, alpha=None, config=None):
-    # print(f"learning basis...")
     train_x, train_y = data
     n_samples = int(0.5 * len(train_x))
     outputs = []
@@ -21,10 +20,7 @@ def compute_basis(data, mechanism, alpha=None, config=None):
     outputs = np.array(outputs)
     mean_output = np.mean(outputs, axis=0)
     centered_output = outputs - mean_output
-    # U: [n_samples, n_components], Sigma: [n_components], VT: [n_components, n_features]
     U, Sigma, VT  = svd(centered_output, full_matrices=False) 
-    # print(f"VT.T@VT: {VT.T @ VT}")
-    # print(f"U shape: {U.shape}, Sigma shape: {Sigma.shape}, VT shape: {VT.shape}")
     return VT
 
 def membership_privacy(data, mechanism, mi, learn_basis, alpha=None, eta = 1e-3):
@@ -79,7 +75,6 @@ def membership_privacy(data, mechanism, mi, learn_basis, alpha=None, eta = 1e-3)
 
             # check for convergence
             if trial % 10 == 0:
-                # cur_vars = {idx: np.var(est_y[idx]) for idx in est_y}
                 cur_vars = {idx: np.mean(est_y[idx]) for idx in est_y}
                 if prev_vars is None:
                     prev_vars = {}
@@ -99,8 +94,6 @@ def membership_privacy(data, mechanism, mi, learn_basis, alpha=None, eta = 1e-3)
         # compute noise for this data point
         final_var = {idx: np.mean(est_y[idx]) for idx in est_y}
 
-        # print(f"For data point {i}, the final variance is: {final_var}")
-
         sqrt_total_var = sum([final_var[idx] ** 0.5 for idx in final_var])
         noise = {}
 
@@ -118,9 +111,6 @@ def membership_privacy(data, mechanism, mi, learn_basis, alpha=None, eta = 1e-3)
             proj_noise_matrix = VT.T @ noise_matrix
             noise = {idx: proj_noise_matrix[idx][idx] for idx in noise}
 
-        # if i % 1000 == 0:
-        #     print(f"For data point {i}, the noise is: {noise}")
-        
         # check for maximum noise
         for idx in noise:
             if idx not in noise_max:

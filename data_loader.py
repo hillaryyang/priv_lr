@@ -1,18 +1,13 @@
-import numpy as np
-import torch
-import pandas as pd
 import os
-import ssl
+import torch
 import warnings
+import pandas as pd
 warnings.filterwarnings('ignore')
 
-from sklearn import preprocessing
-from sklearn.utils import shuffle
-from ucimlrepo import fetch_ucirepo
 from torch.utils.data import TensorDataset
 from sklearn.preprocessing import StandardScaler
 
-def gen_concrete(normalization):
+def gen_concrete(norm):
     # fetch dataset
     path = os.path.join(os.path.dirname(__file__), 'datasets', 'concrete.csv')
     concrete = pd.read_csv(path, sep=',')
@@ -20,7 +15,7 @@ def gen_concrete(normalization):
     x = concrete.drop(['No', 'SLUMP(cm)', 'FLOW(cm)', 'Compressive Strength (28-day)(Mpa)'], axis=1).to_numpy()
     y = concrete['Compressive Strength (28-day)(Mpa)'].to_numpy()
 
-    if normalization == True:
+    if norm == True:
         scaler = StandardScaler()
         x = scaler.fit_transform(x)
         y = scaler.fit_transform(y.reshape(-1, 1)).ravel()
@@ -32,7 +27,7 @@ def gen_concrete(normalization):
 
     return x_tensor, y_tensor, data_loader
 
-def gen_lenses(normalization):
+def gen_lenses(norm):
     # fetch dataset
     path = os.path.join(os.path.dirname(__file__), 'datasets', 'lenses.csv')
     lenses = pd.read_csv(path, names = ['age', 'spectacle_prescription', 'astigmatic', 'tear_production', 'class'], sep = '  ')
@@ -40,7 +35,7 @@ def gen_lenses(normalization):
     x = lenses[['age', 'spectacle_prescription', 'astigmatic', 'tear_production']].to_numpy()
     y = lenses[['class']].to_numpy()
 
-    if normalization == True:
+    if norm == True:
         scaler = StandardScaler()
         x = scaler.fit_transform(x)
         y = scaler.fit_transform(y.reshape(-1, 1)).ravel()
@@ -52,7 +47,7 @@ def gen_lenses(normalization):
 
     return x_tensor, y_tensor, data_loader
 
-def gen_auto(normalization):
+def gen_auto(norm):
     # fetch dataset
     path = os.path.join(os.path.dirname(__file__), 'datasets', 'auto.csv')
     auto = pd.read_csv(path, names = ["symboling","normalized-losses","make","fuel-type","aspiration", "num-of-doors","body-style",
@@ -84,7 +79,7 @@ def gen_auto(normalization):
     print(x.shape)
     print(y.shape)
 
-    if normalization == True:
+    if norm == True:
         scaler = StandardScaler()
         x = scaler.fit_transform(x)
         y = scaler.fit_transform(y.reshape(-1, 1)).ravel()

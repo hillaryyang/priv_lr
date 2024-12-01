@@ -6,13 +6,13 @@ sys.path.append('../')
 from data_loader import gen_auto
 
 # get data
-x, y, _ = gen_auto(normalization=False)
+x, y, _ = gen_auto(norm=True)
 
 # calculate mutual information requirement using equation 3 in paper
-post_success = 0.9999
+post_success = 0.55
 mi = post_success * math.log(2 * post_success) + (1 - post_success) * math.log(2 - 2 * post_success)
 
-_, rmse_stats = membership_pac([x, y], mi, True, alpha=256)
+_, rmse_stats = membership_pac([x, y], mi, True)
 
 # print everything
 print(f"For the Automobile dataset, with PSR {post_success}")

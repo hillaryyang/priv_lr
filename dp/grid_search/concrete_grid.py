@@ -2,8 +2,8 @@ import ssl
 import warnings
 warnings.simplefilter("ignore")
 import torch.nn as nn
-import torch.optim as optim
 from itertools import product
+import torch.optim as optim
 from torch.utils.data import DataLoader
 
 from lr_dp import lrmodel, eval_dp_lr
@@ -16,40 +16,25 @@ from data_loader import gen_concrete
 ssl._create_default_https_context = ssl._create_unverified_context
 
 # parameter grid
-'''# normalized
-epochs = [10, 20, 30]
-norm_clip = [0.5, 1, 2, 4]
-batch_size = [2, 4, 8, 16]
-learning_rate = [0.005, 0.01, 0.05, 0.1]'''
-
-'''# non normalized
-epochs = [10, 20, 30]
-norm_clip = [1000, 5000, 10000, 50000, 100000, 500000]
-batch_size = [2, 4, 8, 16]
-learning_rate = [1e-8, 5e-8, 1e-7, 5e-7, 1e-6]'''
-
-#non normalized
 epochs = [1, 5, 10, 20, 30]
 norm_clip = []
 batch_size = [2, 4, 8, 16, 32]
 learning_rate = []
 
-for i in range(0, 7):
+for i in range(0, 8):
     norm_clip.append(10 ** i)
 
-for i in range(-8, -1):
+for i in range(-8, 0):
     learning_rate.append(10 ** i)
-
 
 # get parameter combinations
 combos = list(product(epochs, norm_clip, batch_size, learning_rate))
 
-# epsilon_list = [0.08002347672, 0.2006525135, 0.6190238237, 1.098598955, 1.734589291, 2.944428453, 3.891810094]
-epsilon = 2.944428453
+epsilon = 1.098598955
 delta = 1e-3
 
 # load data
-x, y, data_loader = gen_concrete(normalization=False)
+x, y, data_loader = gen_concrete(norm = True)
 
 print(f"For epsilon {epsilon}:")
 

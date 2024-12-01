@@ -16,34 +16,25 @@ from data_loader import gen_lenses
 ssl._create_default_https_context = ssl._create_unverified_context
 
 # parameter grid
-# normalized
-'''epochs = [10, 20, 30]
-norm_clip = [1, 2, 3, 4]
-batch_size = [2, 4, 8, 16]
-learning_rate = [0.01, 0.05, 0.1, 0.2]
-'''
-
-#non normalized
 epochs = [1, 5, 10, 20, 30]
 norm_clip = []
 batch_size = [2, 4, 8, 16, 32]
 learning_rate = []
 
-for i in range(0, 7):
+for i in range(0, 8):
     norm_clip.append(10 ** i)
 
-for i in range(-8, -1):
+for i in range(-8, 0):
     learning_rate.append(10 ** i)
 
 # get parameter combinations
 combos = list(product(epochs, norm_clip, batch_size, learning_rate))
 
-# epsilon_list = [0.2006525135, 0.6190238237, 1.098598955, 1.734589291, 2.944428453]
-epsilon = 2.944428453
+epsilon = 1.098598955
 delta = 1e-3
 
 # load data
-x, y, data_loader = gen_lenses(normalization=False)
+x, y, data_loader = gen_lenses(norm = True)
 
 print(f"For epsilon {epsilon}:")
 
@@ -53,7 +44,7 @@ best_params = None
 
 for (epoch, nc, batch, lr) in combos:
     # training objects
-    # train_loader = DataLoader(data_loader, batch_size=batch, shuffle=True)
+    train_loader = DataLoader(data_loader, batch_size=batch, shuffle=True)
     model = lrmodel(x.shape[1])
     optimizer = optim.SGD(model.parameters(), lr)
     criterion = nn.MSELoss()
