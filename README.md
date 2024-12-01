@@ -1,1 +1,2 @@
-## Private linear regression with DP/PAC
+## Private LR
+Private linear regression with DP and PAC
