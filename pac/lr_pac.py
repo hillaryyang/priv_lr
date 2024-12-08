@@ -22,8 +22,8 @@ def run_lr(data, alpha=None, config=None, seed=None):
     train_x, train_y = data
 
     # train the model
-    # model = LinearRegression()
-    model = Ridge(alpha)
+    model = LinearRegression()
+    # model = Ridge(alpha)
     # model = Lasso(alpha)
     model.fit(train_x, train_y)
 

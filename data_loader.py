@@ -76,9 +76,6 @@ def gen_auto(norm):
     x = auto.iloc[:, :-1].select_dtypes(exclude='object').to_numpy()
     y = auto.iloc[:,-1].to_numpy()
 
-    print(x.shape)
-    print(y.shape)
-
     if norm == True:
         scaler = StandardScaler()
         x = scaler.fit_transform(x)
