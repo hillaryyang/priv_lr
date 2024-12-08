@@ -1,5 +1,5 @@
 # Private LR
-This repository implements **private linear regression models**, comparing **Differential Privacy (DP)** to **PAC (Probably Approximately Correct) Privacy** and a non-private baseline. [Differential privacy] (https://link.springer.com/chapter/10.1007/11787006_1) is a commonly accepted privacy notion, and the [PAC Privacy framework](https://eprint.iacr.org/2024/718) is more recent.
+This repository implements **private linear regression models**, comparing **Differential Privacy (DP)** to **PAC (Probably Approximately Correct) Privacy** and a non-private baseline. [Differential privacy](https://link.springer.com/chapter/10.1007/11787006_1) is a commonly accepted privacy notion, and the [PAC Privacy framework](https://eprint.iacr.org/2024/718) is more recent.
 
 ## Source Code
 The source code is located in GitHub, at the link: [https://github.com/hillaryyang/priv_lr](url)
