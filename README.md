@@ -45,3 +45,5 @@ After inputting the desired hyperparameters in the Python files, run the code fo
 * DP: `python3 dp/<dataset>_dp.py`
 * PAC: `python3 pac/<dataset>_pac.py`
 * Non-private: `python3 np/<dataset>_np.py`
+
+Results are printed to the command line.
