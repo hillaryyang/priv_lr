@@ -32,7 +32,7 @@ cd priv_lr
 2. For MacOS, create and activate a virtual environment
 ```
 python -m venv ~/env
-source ~/venv/bin/activate  
+source ~/env/bin/activate  
 ```
 
 3. Install dependencies
