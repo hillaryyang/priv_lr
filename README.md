@@ -28,14 +28,14 @@ as well as non-private baselines.
 ## Installation
 1. Clone the repository:
 ```
-$ git clone https://github.com/hillaryyang/priv_lr.git
-$ cd priv_lr
+git clone https://github.com/hillaryyang/priv_lr.git
+cd priv_lr
 ```
 
 2. Create and activate a virtual environment
 ```
 python -m venv ~/env
-source ~/venv/bin/activate  
+source ~/env/bin/activate  
 ```
 
 3. Install dependencies
