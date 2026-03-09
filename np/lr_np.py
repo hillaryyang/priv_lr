@@ -1,48 +1,52 @@
-import torch.nn as nn
-import numpy as np
-import statistics
+"""
+========
+lr_np.py
+========
+Non-private OLS evaluation with scikit-learn LinearRegression
+"""
 
+import numpy as np
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score, root_mean_squared_error
 
-# pytorch lr model
-class lrmodel(nn.Module):
-  def __init__(self, input_dim):
-    super(lrmodel, self).__init__()
-    self.linear = nn.Linear(input_dim, 1)
+def eval_ols(x, y, n_trials=10000):
+  """
+  Evaluate OLS, using bootstrap sampling (50%) for fair comparison with PAC/DP.
+  Return aggregate RMSE/R2 statistics across all trials
 
-  def forward(self, x):
-    return self.linear(x)
-  
-# evaluates ols model
-def eval_ols(x, y, n_trials = 100000):
+  Args:
+      x: feature matrix
+      y: target vector
+      n_trials: # of bootstrap trials, default 10k
+
+  Returns:
+      rmse_stats: [mean, std, median] of RMSE across trials
+      r2_stats: [mean, std, median] of R2 across trials
+  """
+  x_np = np.array(x)  # convert tensor to numpy
+  y_np = np.array(y)
+
+  n_samples = x_np.shape[0]
+  sample_size = int(0.5 * n_samples)  # sample half of data
+
   r2_list = []
   rmse_list = []
 
-  # train
-  for i in range(n_trials):
-    # sample x and y
-    idx = np.random.choice(x.shape[0], int(0.5 * len(x)), replace=False)
-    sample_x = x[idx]
-    sample_y = y[idx]
+  # run bootstrap trials, each fitting OLS on an independent subsample
+  for _ in range(n_trials):
+    idx = np.random.choice(n_samples, sample_size, replace=False)  # random indices
+    sample_x, sample_y = x_np[idx], y_np[idx]
 
-    # fit model
+    # fit OLS and get predictions
     model = LinearRegression()
-    model.fit(sample_x, sample_y)
+    pred = model.fit(sample_x, sample_y).predict(sample_x)
 
-    # evaluate
-    pred = model.predict(sample_x)
-    y_np = sample_y.numpy()
+    # record R2 and RMSE
+    r2_list.append(r2_score(sample_y, pred))
+    rmse_list.append(root_mean_squared_error(sample_y, pred))
 
-    # get r2 and rmse values
-    r2 = r2_score(y_np, pred)
-    rmse = root_mean_squared_error(y_np, pred)
-    
-    # append to list
-    r2_list.append(r2)
-    rmse_list.append(rmse)
-    
-  r2_stats = [np.mean(r2_list), np.std(r2_list), statistics.median(r2_list)]
-  rmse_stats = [np.mean(rmse_list), np.std(rmse_list), statistics.median(rmse_list)]
-  
+  # aggregate statistics (mean, std, median) across all trials
+  rmse_stats = [np.mean(rmse_list), np.std(rmse_list), np.median(rmse_list)]
+  r2_stats   = [np.mean(r2_list),   np.std(r2_list),   np.median(r2_list)]
+
   return rmse_stats, r2_stats

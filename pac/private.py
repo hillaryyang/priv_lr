@@ -117,7 +117,7 @@ def membership_privacy(data, mechanism, mi, learn_basis, alpha=None, eta = 1e-3)
                 noise_max[idx] = 0.0
             noise_max[idx] = max(noise_max[idx], noise[idx])
 
-    # print(f"Noise learned: {noise_max}")
+    print(f"Finished estimating noise...")
     return noise_max
 
 def privatize(output, learned_noise):

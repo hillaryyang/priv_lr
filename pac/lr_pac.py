@@ -114,7 +114,7 @@ def membership_pac(train_data, mi, learn_basis, alpha=None, eta = 1e-2):
                 prev_mean = cur_mean
 
         if trial % 10 == 0:
-           print(f"Trial: {trial}, RMSE mean: {np.mean(rmse_list)}")
+           print(f"Trial: {trial}, RMSE: {np.mean(rmse_list)}")
 
         trial += 1
 
@@ -123,4 +123,4 @@ def membership_pac(train_data, mi, learn_basis, alpha=None, eta = 1e-2):
     rmse_stats = [np.mean(rmse_list), np.std(rmse_list), statistics.median(rmse_list)]
 
     # return the stats
-    return r2_stats, rmse_stats
+    return r2_stats, rmse_stats, rmse_list
