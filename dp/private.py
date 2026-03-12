@@ -8,9 +8,7 @@ Privatize PyTorch training objects for DPSGD using Opacus.
 from opacus import PrivacyEngine
 
 def privatize(
-    model,
-    optimizer,
-    dataloader,
+    model, optimizer, dataloader,
     epochs: int,
     norm_clip: float,
     epsilon: float,
@@ -19,17 +17,17 @@ def privatize(
     """
     Privatize PyTorch training objects. Opacus replaces the model, optimizer, 
     and dataloader with DP-compatible versions that:
-      - use Poisson sampling from dataloader to satisfy DP guarantees
-      - clip per-sample gradients to norm_clip
-      - inject calibrated Gaussian noise
+    1. use Poisson sampling from dataloader to satisfy DP guarantees
+    2. clip per-sample gradients to norm_clip
+    3. inject calibrated Gaussian noise
 
     Noise is computed automatically to meet specified ε
     over the given number of epochs.
 
     Args:
-        PyTorch training objects: model, optimizer, dataloader
-        Relevant hyperparameters: epochs, norm_clip
-        epsilon: DP privacy budject
+        model, optimizer, dataloader: PyTorch training objects
+        epochs, norm_clip: relevant hyperparameters 
+        epsilon: DP privacy budget
         delta: DP failure probability
 
     Returns:

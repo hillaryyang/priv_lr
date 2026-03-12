@@ -2,8 +2,13 @@
 ========
 lr_dp.py
 ========
-Differentially private SGD model evaluation with Opacus. Trains a PyTorch
-linear regression model with DP-SGD until convergence, returns RMSE/R2 statistics.
+Differentially private SGD model evaluation with Opacus. 
+
+The algorithm:
+1. Privatize SGD model using Opacus
+2. Train privatized model and get predictions (RMSE/R2)
+3. Check for convergence within a threshold (0.01)
+4. return overall performance statistics (RMSE/R2)
 """
 
 import math
@@ -15,13 +20,10 @@ import numpy as np
 import torch.optim as optim
 from torch.utils.data import DataLoader
 
-from copy import deepcopy
 from private import privatize
 from sklearn.metrics import r2_score, root_mean_squared_error
 
 DELTA = 1e-3  # fixed delta (probability of privacy breach) used across all experiments
-CONV_CHECK = 20
-LOG_INTERVAL = 10
 
 def psr_to_epsilon(psr: float, delta: float) -> float:
     """
@@ -51,22 +53,16 @@ class lrmodel(nn.Module):
 
 def eval_dp_lr(model: nn.Module, optimizer: optim.Optimizer,
                criterion: nn.Module, data_loader: DataLoader,
-               data: list, epochs: int, epsilon: float,
+               data: tuple[torch.Tensor, torch.Tensor], epochs: int, epsilon: float,
                norm_clip: float, batch_size: int, eta: float = 0.01):
     """
-    Evaluate DP-SGD via convergence loop (privatize, train, evaluate) until stabilization
-    within eta (0.01), return RMSE/R2 stats
+    Train/evaluate DPSGD-LR via convergence loop (privatize, train, evaluate) until 
+    stabilization within eta (0.01), return RMSE/R2 stats
 
     Args:
-        model: initialized PyTorch linear model
-        optimizer: SGD optimizer bound to model parameters
-        criterion: loss function
-        data_loader: full dataset for building per-trial DataLoaders
-        data: [x_test, y_test] tensors for evaluation
-        epochs: number of training epochs per trial
+        model, optimizer, criterion, dataloader, data: training objects
+        epochs, norm_clip, batch_size: SGD hyperparameters
         epsilon: DP epsilon privacy budget
-        norm_clip: gradient clipping norm
-        batch_size: batch size for per-trial DataLoaders
         eta: convergence threshold on RMSE mean (defaults to 0.01)
 
     Returns:
@@ -81,20 +77,17 @@ def eval_dp_lr(model: nn.Module, optimizer: optim.Optimizer,
     r2_list = []
     rmse_list = []
 
-    prev_mean = float("inf")
+    prev_mean = None
 
     for trial in itertools.count():  # run trials until RMSE mean converges within eta (0.01)
         # create fresh model with re-initialized weights each trial for meaningful variance
-        model_copy = deepcopy(model)
-        for layer in model_copy.modules():
-            if hasattr(layer, 'reset_parameters'):
-                layer.reset_parameters()
+        model_copy = lrmodel(model.linear.in_features)
         optimizer_copy = optim.SGD(model_copy.parameters(), lr=optimizer.defaults['lr'])
-        data_loader_copy = DataLoader(data_loader, batch_size=batch_size, shuffle=True)
-        
+        shuffled_loader = DataLoader(data_loader, batch_size=batch_size, shuffle=True)
+
         # call privatize function to apply differential privacy guarantees
         priv_model, priv_optimizer, priv_data_loader = privatize(
-            model_copy, optimizer_copy, data_loader_copy, epochs, epsilon, DELTA, norm_clip
+            model_copy, optimizer_copy, shuffled_loader, epochs, epsilon, DELTA, norm_clip
         )
 
         # train privatized model for specified epochs
@@ -116,13 +109,12 @@ def eval_dp_lr(model: nn.Module, optimizer: optim.Optimizer,
 
         cur_mean = np.mean(rmse_list)
 
-        # check convergence every 50 trials
-        if trial % CONV_CHECK == 0:
-            if abs(cur_mean - prev_mean) < eta:
+        if trial % 50 == 0: # check convergence every 50 trials
+            if prev_mean is not None and abs(cur_mean - prev_mean) < eta:
                 break
             prev_mean = cur_mean
 
-        if trial % LOG_INTERVAL == 0:
+        if trial % 10 == 0: # print results every 10 trials
             print(f"Trial: {trial}, Cumulative RMSE mean: {cur_mean}")
 
     # aggregate statistics (mean, std, median) across all trials

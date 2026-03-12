@@ -1,130 +1,146 @@
+"""
+==========
+private.py
+==========
+Anisotropic noise estimation for PAC membership privacy.
+"""
+
 import numpy as np
 import torch
-from util import get_samples_safe
 from numpy.linalg import svd
 
-def compute_basis(data, mechanism, alpha=None, config=None):
+def get_samples(X: torch.Tensor, y: torch.Tensor, n_samples: int) -> tuple[torch.Tensor, torch.Tensor]:
+    """Get n samples from provided dataset"""
+    idx = np.random.choice(X.shape[0], n_samples, replace=False)
+    return X[idx], y[idx]
+
+def compute_basis(
+    data: tuple[torch.Tensor, torch.Tensor],
+    mechanism: callable,
+    alpha: float | None = None,
+) -> np.ndarray:
+    """
+    Learn a projection basis (V^T) via SVD to identify the principal
+    directions of variance in the mechanism's output space.
+
+    Args:
+        data: [train_x, train_y]
+        mechanism: algorithm to be privatized
+        alpha: optional regularization parameter
+
+    Returns:
+        VT: numpy array decomposition capturing
+            principal directions of variance
+    """
+
     train_x, train_y = data
-    n_samples = int(0.5 * len(train_x))
+    n_samples = int(0.5 * len(train_x)) # n = half the dataset each trial
     outputs = []
 
-    for i in range(10000):
-        # sample dataset
-        sampled_x, sampled_y = get_samples_safe(train_x, train_y, n_samples)
-
-        # get the output of the black-box mechanism
-        _, output = mechanism([sampled_x, sampled_y], alpha)
-
+    for _ in range(10000): # randomly subsample the dataset 10000 times then average
+        sampled_x, sampled_y = get_samples(train_x, train_y, n_samples)
+        _, output = mechanism([sampled_x, sampled_y], *((alpha,) if alpha is not None else ()))
         outputs.append(output)
-    
+
     outputs = np.array(outputs)
+
+    # center outputs and compute SVD to extract principal directions
     mean_output = np.mean(outputs, axis=0)
     centered_output = outputs - mean_output
-    U, Sigma, VT  = svd(centered_output, full_matrices=False) 
-    return VT
+    _, _, VT = svd(centered_output, full_matrices=False)
+    
+    return VT # VT rows are the principal directions of output variance
 
-def membership_privacy(data, mechanism, mi, learn_basis, alpha=None, eta = 1e-3):
-    if learn_basis == True:
-        VT = compute_basis(data, mechanism, alpha)
+def membership_privacy(
+    data: tuple[torch.Tensor, torch.Tensor],
+    mechanism: callable,
+    mi: float,
+    alpha: float | None = None,
+    eta: float = 1e-3,
+    verbose: bool = True,
+) -> dict[int, float]:
+    """
+    Estimate per-dimension noise. 
+    1. Construct two neighboring datasets for each point i
+    2. Run mechanism on both and measure per-dimension output difference
+    3. Iterate until variance converges per dimension (threshold 0.001)
+    4. Calculate anisotropic noise (noise[d]) analytically 
+
+    Args:
+        data: [train_x, train_y] tensors
+        mechanism: black-box algorithm returning (model, weights)
+        mi: Mutual Information variable used in noise calculation
+        alpha: Optional regularization parameter
+        eta: Per-dimension convergence threshold (default 1e-3)
+        verbose: Logging condition
+
+    Returns:
+        noise_max: dict mapping dimension index to 
+                   noise estimate for that dimension
+    """
+    VT = compute_basis(data, mechanism, alpha) # get projection matrix VT
+    train_x, train_y = data # unpack data
     noise_max = {} # store maximum noise
 
-    train_x, train_y = data
-
+    # loop over every datapoint to estimate output differences:
     for i in range(len(train_x)):
-        # store ith data point to add back in later
-        x_point = train_x[i].unsqueeze(0)
-        y_point = train_y[i].unsqueeze(0)
+        x_point, y_point = train_x[i].unsqueeze(0), train_y[i].unsqueeze(0)
+        sampled_x, sampled_y = (
+            torch.cat((train_x[:i], train_x[i + 1 :]), dim=0),
+            torch.cat((train_y[:i], train_y[i + 1 :]), dim=0),
+        ) # neighboring datasets (remove datapoint i)
 
-        # remove ith data point
-        sampled_x = torch.cat((train_x[:i], train_x[i+1:]), dim=0)
-        sampled_y = torch.cat((train_y[:i], train_y[i+1:]), dim=0)
-
-        est_y = {}  # store the trial result for each output dimension
-        prev_vars = None  # store the previous variance for each output dimension
-        trial = 0 # count trials
+        est_y = {}  # store trial result for each output dimension
+        prev_vars = None  # store previous variance (for convergence check)
+        trial = 0
         converged = False
 
         while not converged:
-            # sample half of data
-            a_x, a_y = get_samples_safe(sampled_x, sampled_y, int(0.5 * len(sampled_x)))
+            x_a, y_a = get_samples(sampled_x, sampled_y, int(0.5 * len(sampled_x))) # dataset A: half sample 
+            x_b, y_b = torch.cat((x_a, x_point), dim=0), torch.cat((y_a, y_point), dim=0) # dataset B: A with point i added back (neighboring)
 
-            # get neighboring dataset to A (B)
-            b_x = torch.cat((a_x, x_point), dim = 0)
-            b_y = torch.cat((a_y, y_point), dim = 0)
+            # get mechanism output for both datasets
+            extra = (alpha,) if alpha is not None else () # for regularization only
+            _, w_a = mechanism([x_a, y_a], *extra) # M(A)
+            _, w_b = mechanism([x_b, y_b], *extra) # M(B)
+            
+            # project both outputs/weights to optimized basis using VT
+            w_a, w_b = VT @ w_a, VT @ w_b
 
-            # get output from mechanism for both datasets
-            if alpha == None:
-                _, w_a = mechanism([a_x, a_y])
-                _, w_b = mechanism([b_x, b_y])
-            else:
-                _, w_a = mechanism([a_x, a_y], alpha)
-                _, w_b = mechanism([b_x, b_y], alpha)   
-
-            if learn_basis:
-                w_a = VT @ w_a
-                w_b = VT @ w_b
-
-            # calculate difference squared for each dimension between A and B
-            g = [(a - b) ** 2 for a, b in zip(w_a, w_b)]
-
-            # store difference for each dimension
+            g = (np.array(w_a) - np.array(w_b)) ** 2 # square of output difference/sensitivity
             for idx in range(len(g)):
-                if idx not in est_y:
-                    est_y[idx] = []
-                est_y[idx].append(g[idx])
+                est_y.setdefault(idx, []).append(g[idx]) # track per-dimension
 
-            # check for convergence
-            if trial % 10 == 0:
-                cur_vars = {idx: np.mean(est_y[idx]) for idx in est_y}
-                if prev_vars is None:
-                    prev_vars = {}
-                    for idx in est_y:
-                        prev_vars[idx] = cur_vars[idx]
-                else:
+            if trial % 10 == 0: # convergence check
+                cur_vars = np.array([np.mean(est_y[idx]) for idx in sorted(est_y)])
+                if prev_vars is not None and np.all(np.abs(cur_vars - prev_vars) < eta):
                     converged = True
-                    for idx in est_y:
-                        if abs(cur_vars[idx] - prev_vars[idx]) > eta:
-                            converged = False
-                            if trial % 1000 == 0:
-                                print(f"n_iter: {trial}, idx: {idx}, var diff: {abs(cur_vars[idx] - prev_vars[idx])}")
-                    if not converged:
-                        prev_vars = {idx: cur_vars[idx] for idx in cur_vars}
+                prev_vars = cur_vars
+            
             trial += 1
             
-        # compute noise for this data point
-        final_var = {idx: np.mean(est_y[idx]) for idx in est_y}
+        # variance computations
+        point_var = {idx: np.mean(est_y[idx]) for idx in est_y}  # map dims to empirical sensitivity in that direction
+        total_sensitivity = sum(v ** 0.5 for v in point_var.values()) # sum of per-dim std., scales noise across dims
 
-        sqrt_total_var = sum([final_var[idx] ** 0.5 for idx in final_var])
-        noise = {}
+        noise = {idx: (point_var[idx] ** 0.5 * total_sensitivity) / (4 * mi) for idx in point_var}
 
-        for idx in final_var:
-            denominator = 4 * mi
-            numerator = final_var[idx] ** 0.5 * sqrt_total_var
-            noise[idx] = numerator / denominator
-        
-        if learn_basis:
-            # dict to matrix
-            noise_matrix = np.zeros((len(noise), len(noise)))
-            for idx in noise:
-                noise_matrix[idx][idx] = noise[idx]
-            # transform noise to original space
-            proj_noise_matrix = VT.T @ noise_matrix
-            noise = {idx: proj_noise_matrix[idx][idx] for idx in noise}
+        # project noise back to original feature space via VT diagonal
+        proj_diag = np.diag(VT.T) * np.fromiter(noise.values(), dtype=float)
+        noise = {idx: proj_diag[idx] for idx in range(len(proj_diag))}
 
-        # check for maximum noise
-        for idx in noise:
-            if idx not in noise_max:
-                noise_max[idx] = 0.0
-            noise_max[idx] = max(noise_max[idx], noise[idx])
+        # get max noise per dimension
+        for idx, val in noise.items():
+            noise_max[idx] = max(noise_max.get(idx, 0.0), val)
 
-    print(f"Finished estimating noise...")
+    if verbose:
+        print("Finished estimating noise...")
     return noise_max
 
-def privatize(output, learned_noise):
+def privatize(output: np.ndarray, learned_noise: dict[int, float]) -> np.ndarray:
     """
-    Add Anisotropic Gaussian noise to the output
+    Add the estimated noise to the output
     """
-    for idx in range(len(output)):
-        c = np.random.normal(0, scale=learned_noise[idx])
-        output[idx] += c
+    scales = np.array([learned_noise[idx] for idx in range(len(output))])
+    output += np.random.normal(0, scale=scales)
     return output

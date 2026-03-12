@@ -2,8 +2,9 @@
 =========
 run_pac.py
 =========
-Consolidates auto_pac.py, concrete_pac.py, and lenses_pac.py into a single
-script with a --dataset flag.
+Run linear regression with a PAC private guarantee (PAC-LR) 
+Utilizes a custom anisotropic noise estimation algorithm (private.py)  
+to learn noise, and report RMSE/R2 statistics
 
 Usage:
     python run_pac.py                        # run all datasets
@@ -24,14 +25,16 @@ from data_loader import load_dataset, _LOADERS
 
 ssl._create_default_https_context = ssl._create_unverified_context
 
-PSR = 0.85
-MI = PSR * math.log(2 * PSR) + (1 - PSR) * math.log(2 - 2 * PSR)
+PSR = 0.85  # probability of correct prediction; fix at moderate privacy for demonstration
+MI = PSR * math.log(2 * PSR) + (1 - PSR) * math.log(2 - 2 * PSR)  # Mutual Information (MI) bound derived from PSR
 
 def run(name: str) -> None:
+    """Load dataset, learn/apply noise, and print RMSE/R2 statistics"""
     x, y, _ = load_dataset(name, norm=True)
 
     print(f"Training PAC-LR for {name} dataset (PSR={PSR}):")
-    r2_stats, rmse_stats, _ = membership_pac([x, y], MI, learn_basis=True)
+    # membership_pac runs regression and estimates/adds noise over multiple trials
+    rmse_stats, r2_stats, _ = membership_pac([x, y], MI)
 
     rmse_mean, rmse_std, rmse_med = rmse_stats
     r2_mean, r2_std, r2_med = r2_stats
@@ -46,6 +49,6 @@ if __name__ == "__main__":
                         help="Dataset to run (default: all)")
     args = parser.parse_args()
 
-    datasets = [args.dataset] if args.dataset else list(_LOADERS)
+    datasets = [args.dataset] if args.dataset else list(_LOADERS)  # default to running for all datasets
     for name in datasets:
         run(name)

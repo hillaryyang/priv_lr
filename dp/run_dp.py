@@ -39,7 +39,6 @@ PARAMS = {
 }
 
 def run(name: str) -> None:
-    
     """Load dataset, train DP-SGD model until convergence, and print RMSE/R2 statistics"""
     x, y, data_loader = load_dataset(name, norm=True)
     params = PARAMS[name]
