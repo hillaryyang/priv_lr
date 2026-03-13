@@ -6,15 +6,11 @@ Evaluate differentially private stochastic gradient descent with Opacus.
 Trains a PyTorch LinearRegression model with DPSGD until convergence, report RMSE/R2 statistics.
 
 Usage:
-    python run_dp.py                        # run all datasets
-    python run_dp.py --dataset concrete     # run only concrete
-    python run_dp.py --dataset lenses       # run only lenses
-    python run_dp.py --dataset auto         # run only automobiles
+    python run_np.py --dataset [concrete | lenses | auto]
 """
 
 import ssl
 import warnings
-import argparse
 import sys
 sys.path.append('../')
 
@@ -25,7 +21,7 @@ import torch.nn as nn
 import torch.optim as optim
 
 from lr_dp import lrmodel, eval_dp_lr, psr_to_epsilon, DELTA
-from data_loader import load_dataset, _LOADERS
+from data_loader import load_dataset, parse_datasets
 
 LEARNING_RATE = 1e-6
 PSR = 0.85  # posterior success rate — adversary's probability of correct membership inference (0.85 = moderate privacy)
@@ -68,15 +64,5 @@ def run(name: str) -> None:
     print(f"  R2   mean={r2_mean:.4f}     std. dev={r2_std:.4f}     median={r2_med:.4f}")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="DPSGD-LR")
-    parser.add_argument(
-        "--dataset",
-        choices=list(_LOADERS),
-        default=None,
-        help="Dataset to run (default: all)"
-    )
-    args = parser.parse_args()
-
-    datasets = [args.dataset] if args.dataset else list(_LOADERS)
-    for name in datasets:
+    for name in parse_datasets("DPSGD-LR"):
         run(name)

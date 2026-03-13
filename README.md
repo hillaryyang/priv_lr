@@ -35,7 +35,7 @@ Privacy via training loop — each epoch, for each batch:
 │   ├── concrete.csv        # 103 instances, 7 features — compressive strength (MPa)
 │   └── auto.csv            # 201 instances, 15 features — car price (USD)
 ├── np/
-│   ├── lr_np.py            # OLS evaluation (bootstrap)
+│   ├── lr_np.py            # OLS evaluation
 │   └── run_np.py           # Runner: non-private baseline
 ├── dp/
 │   ├── lr_dp.py            # DPSGD-LR training loop
@@ -44,9 +44,9 @@ Privacy via training loop — each epoch, for each batch:
 │   └── grid_search.py      # Hyperparameter search for DPSGD-LR
 └── pac/
     ├── lr_pac.py           # PAC-LR training loop
-    ├── private.py          # Anisotropic noise estimation (SVD + MI)
+    ├── private.py          # Anisotropic noise estimation + SVD
     ├── run_pac.py          # Runner: PAC-LR
-    └── alpha_search.py     # Hyperparameter search for Ridge/Lasso regularization (α)
+    └── alpha_search.py     # Hyperparameter search for Ridge/Lasso alpha regularization parameter
 ```
 
 ## Installation

@@ -7,16 +7,12 @@ Utilizes a custom anisotropic noise estimation algorithm (private.py)
 to learn noise, and report RMSE/R2 statistics
 
 Usage:
-    python run_pac.py                        # run all datasets
-    python run_pac.py --dataset concrete     # run only concrete
-    python run_pac.py --dataset lenses       # run only lenses
-    python run_pac.py --dataset auto         # run only automobiles
+    python run_np.py --dataset [concrete | lenses | auto]
 """
 
 import math
 import ssl
 import warnings
-import argparse
 import sys
 sys.path.append('../')
 
@@ -24,7 +20,7 @@ warnings.simplefilter("ignore")
 ssl._create_default_https_context = ssl._create_unverified_context
 
 from lr_pac import membership_pac
-from data_loader import load_dataset, _LOADERS
+from data_loader import load_dataset, parse_datasets
 
 PSR = 0.85  # posterior success rate — adversary's probability of correct membership inference (0.85 = moderate privacy)
 MI = PSR * math.log(2 * PSR) + (1 - PSR) * math.log(2 - 2 * PSR)  # Mutual Information (MI) bound derived from PSR, used to calibrate noise
@@ -44,15 +40,5 @@ def run(name: str) -> None:
     print(f"  R2   mean={r2_mean:.4f}     std. dev={r2_std:.4f}     median={r2_med:.4f}")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="PAC-LR")
-    parser.add_argument(
-        "--dataset",
-        choices=list(_LOADERS),
-        default=None,
-        help="Dataset to run (default: all)"
-    )
-    args = parser.parse_args()
-
-    datasets = [args.dataset] if args.dataset else list(_LOADERS)
-    for name in datasets:
+    for name in parse_datasets("PAC-LR"):
         run(name)

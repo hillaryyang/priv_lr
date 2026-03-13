@@ -168,6 +168,27 @@ _LOADERS = {
     "auto":     gen_auto,
 }
 
+def parse_datasets(description: str) -> list[str]:
+    """Parse --dataset CLI argument and return list of dataset names to run.
+
+    Args:
+        description: argparse program description string
+
+    Returns:
+        List of dataset names (all datasets if --dataset is omitted)
+    """
+    import argparse
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument(
+        "--dataset",
+        choices=list(_LOADERS),
+        default=None,
+        help="Dataset to run (default: all)"
+    )
+    args = parser.parse_args()
+    return [args.dataset] if args.dataset else list(_LOADERS)
+
+
 def load_dataset(name: str, norm: bool) -> tuple[torch.Tensor, torch.Tensor, TensorDataset]:
     """Load benchmark dataset by name
 
