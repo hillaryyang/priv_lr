@@ -2,11 +2,10 @@
 ========
 run_dp.py
 ========
-Evaluate differentially private stochastic gradient descent with Opacus.
-Trains a PyTorch LinearRegression model with DPSGD until convergence, report RMSE/R2 statistics.
+Evaluate DP stochastic gradient descent (DPSGD-LR) using lr_dp.py
 
 Usage:
-    python run_np.py --dataset [concrete | lenses | auto]
+    python run_dp.py --dataset [concrete | lenses | auto]
 """
 
 import ssl
@@ -24,10 +23,9 @@ from lr_dp import lrmodel, eval_dp_lr, psr_to_epsilon, DELTA
 from data_loader import load_dataset, parse_datasets
 
 LEARNING_RATE = 1e-6
-PSR = 0.85  # posterior success rate — adversary's probability of correct membership inference (0.85 = moderate privacy)
+PSR = 0.85  # posterior success rate (PSR); 0.85 moderate privacy for demonstration
 
 # per-dataset tuned hyperparameters for PSR 0.85
-# epsilon is derived from PSR at runtime via psr_to_epsilon
 PARAMS = {
     "concrete": {"epochs": 30, "norm_clip": 1.5, "batch_size": 8},
     "lenses":   {"epochs": 30, "norm_clip": 2, "batch_size": 8},
@@ -48,20 +46,19 @@ def run(name: str) -> None:
     
     # train and evaluate DP-SGD model
     print(f"Training DP-SGD for {name} dataset (PSR={PSR}, epsilon={epsilon:.6f}):")
-    rmse_stats, r2_stats, _ = eval_dp_lr(
+
+    # train and evaluate DP-SGD model
+    # unpack statistics (mean, std, median) for each metric
+    (rmse_mean, rmse_std, rmse_med), (r2_mean, r2_std, r2_med) = eval_dp_lr(
         model, optimizer, criterion, data_loader, (x, y),
         epochs=params['epochs'], epsilon=epsilon,
         norm_clip=params['norm_clip'], batch_size=params['batch_size']
     )
 
-    # unpack statistics (mean, std, median) for each metric
-    rmse_mean, rmse_std, rmse_med = rmse_stats
-    r2_mean, r2_std, r2_med = r2_stats
-
     # print results
     print(f"DP-SGD results for {name} dataset (PSR={PSR}, ε={epsilon:.6f})")
-    print(f"  RMSE mean={rmse_mean:.4f}     std. dev={rmse_std:.4f}     median={rmse_med:.4f}")
-    print(f"  R2   mean={r2_mean:.4f}     std. dev={r2_std:.4f}     median={r2_med:.4f}")
+    print(f"  RMSE: mean={rmse_mean:.4f}     std. dev={rmse_std:.4f}     median={rmse_med:.4f}")
+    print(f"  R2:   mean={r2_mean:.4f}   std. dev={r2_std:.4f}     median={r2_med:.4f}")
 
 if __name__ == "__main__":
     for name in parse_datasets("DPSGD-LR"):

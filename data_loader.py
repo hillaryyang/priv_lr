@@ -29,9 +29,7 @@ from torch.utils.data import TensorDataset
 
 warnings.filterwarnings("ignore")
 
-# ------------------------
 # tensor conversion helper
-# ------------------------
 def _to_tensors(x: np.ndarray, y: np.ndarray, norm: bool) -> tuple[torch.Tensor, torch.Tensor, TensorDataset]:
     """Optionally normalize data, then convert to tensors and TensorDataset.
 

@@ -114,7 +114,7 @@ def eval_dp_lr(
 
         # call privatize function to apply differential privacy guarantees
         priv_model, priv_optimizer, priv_data_loader = privatize(
-            model_copy, optimizer_copy, shuffled_loader, epochs, epsilon, DELTA, norm_clip
+            model_copy, optimizer_copy, shuffled_loader, epochs, norm_clip, epsilon, DELTA
         )
 
         # train privatized model for specified epochs
@@ -142,7 +142,7 @@ def eval_dp_lr(
             prev_mean = cur_mean
 
         if trial % 10 == 0: # print results every 10 trials
-            print(f"Trial: {trial}, Cumulative RMSE mean: {cur_mean}")
+            print(f"Trial: {trial}, Cumulative RMSE mean: {cur_mean:.4f}")
 
     # aggregate statistics (mean, std, median) across all trials
     r2_stats   = [np.mean(r2_list),   np.std(r2_list),   np.median(r2_list)]
