@@ -2,18 +2,22 @@
 ========
 lr_dp.py
 ========
-Differentially private SGD model evaluation with Opacus. 
+Differentially private SGD linear regression (DPSGD-LR) using Opacus.
+
+Privacy is quantified via epsilon (ε) — smaller ε means stronger privacy and less
+information disclosure risk. ε is derived analytically from posterior success rate (PSR),
+the adversary's probability of correct membership inference, enabling direct comparison
+with PAC-LR under identical privacy conditions.
 
 The algorithm:
-1. Privatize SGD model using Opacus
-2. Train privatized model and get predictions (RMSE/R2)
-3. Check for convergence within a threshold (0.01)
-4. return overall performance statistics (RMSE/R2)
+1. Privatize SGD model using Opacus (Poisson sampling, gradient clipping, isotropic noise)
+2. Train privatized model and record predictions (RMSE/R2)
+3. Check for convergence within threshold (0.01)
+4. Return overall performance statistics (RMSE/R2)
 """
 
 import math
 import itertools
-from typing import Any
 import torch
 import torch.nn as nn
 import numpy as np
@@ -40,34 +44,57 @@ def psr_to_epsilon(psr: float, delta: float) -> float:
     return math.log((1 - delta) / (1 - psr) - 1)
 
 class lrmodel(nn.Module):
-    """Simple single-layer PyTorch linear regression model"""
+    """Single-layer PyTorch linear regression model (input_dim → 1 output)."""
 
-    def __init__(self, input_dim):
-        # initialize linear layer with given input dimensionality
+    def __init__(self, input_dim: int):
+        """
+        Args:
+            input_dim: number of input features
+        """
         super(lrmodel, self).__init__()
         self.linear = nn.Linear(input_dim, 1)
 
-    def forward(self, x):
-        # forward pass, apply linear transformation to input x
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Args:
+            x: input tensor of shape (N, input_dim)
+
+        Returns:
+            predictions of shape (N, 1)
+        """
         return self.linear(x)
 
-def eval_dp_lr(model: nn.Module, optimizer: optim.Optimizer,
-               criterion: nn.Module, data_loader: DataLoader,
-               data: tuple[torch.Tensor, torch.Tensor], epochs: int, epsilon: float,
-               norm_clip: float, batch_size: int, eta: float = 0.01):
+def eval_dp_lr(
+    model: nn.Module,
+    optimizer: optim.Optimizer,
+    criterion: nn.Module,
+    data_loader: DataLoader,
+    data: tuple[torch.Tensor, torch.Tensor],
+    epochs: int,
+    epsilon: float,
+    norm_clip: float,
+    batch_size: int,
+    eta: float = 0.01,
+) -> tuple:
     """
-    Train/evaluate DPSGD-LR via convergence loop (privatize, train, evaluate) until 
-    stabilization within eta (0.01), return RMSE/R2 stats
+    Train/evaluate DPSGD-LR via convergence loop (privatize, train, evaluate) until
+    stabilization within eta (0.01), return RMSE/R2 stats.
 
     Args:
-        model, optimizer, criterion, dataloader, data: training objects
-        epochs, norm_clip, batch_size: SGD hyperparameters
-        epsilon: DP epsilon privacy budget
-        eta: convergence threshold on RMSE mean (defaults to 0.01)
+        model: PyTorch linear regression model
+        optimizer: SGD optimizer
+        criterion: loss function
+        data_loader: training DataLoader
+        data: (x_test, y_test) tensors for evaluation
+        epochs: training epochs per trial
+        epsilon: DP privacy budget
+        norm_clip: per-sample gradient clipping threshold
+        batch_size: training batch size
+        eta: convergence threshold on RMSE mean (default 0.01)
 
     Returns:
-        r2_stats: [mean, std, median] of R2 across trials
         rmse_stats: [mean, std, median] of RMSE across trials
+        r2_stats: [mean, std, median] of R2 across trials
         rmse_list: per-trial RMSE values
     """
     # unpack data
@@ -121,4 +148,4 @@ def eval_dp_lr(model: nn.Module, optimizer: optim.Optimizer,
     r2_stats   = [np.mean(r2_list),   np.std(r2_list),   np.median(r2_list)]
     rmse_stats = [np.mean(rmse_list), np.std(rmse_list), np.median(rmse_list)]
 
-    return r2_stats, rmse_stats, rmse_list
+    return rmse_stats, r2_stats, rmse_list

@@ -4,6 +4,9 @@ grid_search.py
 ================
 Grid search over hyperparameters (epochs, norm clip, batch size, learning rate) to find
 the best hyperparameter combinations for DPSGD-LR on each dataset and privacy level
+
+Usage:
+    python grid_search.py --dataset [lenses | concrete | auto]
 """
 
 import ssl

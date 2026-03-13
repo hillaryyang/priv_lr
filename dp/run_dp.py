@@ -2,7 +2,7 @@
 ========
 run_dp.py
 ========
-Evaluate differentially private stochastic gradient descent with Opacus. 
+Evaluate differentially private stochastic gradient descent with Opacus.
 Trains a PyTorch LinearRegression model with DPSGD until convergence, report RMSE/R2 statistics.
 
 Usage:
@@ -14,21 +14,21 @@ Usage:
 
 import ssl
 import warnings
-warnings.simplefilter("ignore")
-
 import argparse
 import sys
 sys.path.append('../')
+
+warnings.simplefilter("ignore")
+ssl._create_default_https_context = ssl._create_unverified_context
 
 import torch.nn as nn
 import torch.optim as optim
 
 from lr_dp import lrmodel, eval_dp_lr, psr_to_epsilon, DELTA
 from data_loader import load_dataset, _LOADERS
-ssl._create_default_https_context = ssl._create_unverified_context
 
 LEARNING_RATE = 1e-6
-PSR = 0.85 # fix at moderate privacy (0.85) for demonstration purposes
+PSR = 0.85  # posterior success rate — adversary's probability of correct membership inference (0.85 = moderate privacy)
 
 # per-dataset tuned hyperparameters for PSR 0.85
 # epsilon is derived from PSR at runtime via psr_to_epsilon
@@ -43,8 +43,7 @@ def run(name: str) -> None:
     x, y, data_loader = load_dataset(name, norm=True)
     params = PARAMS[name]
 
-    # compute epsilon from posterior success rate and delta
-    epsilon = psr_to_epsilon(PSR, DELTA) # compute ε from PSR/delta
+    epsilon = psr_to_epsilon(PSR, DELTA)  # derive ε from PSR — enables direct comparison with PAC-LR at identical privacy levels
 
     # initialize model, optimizer, and loss
     model = lrmodel(x.shape[1])
@@ -53,8 +52,8 @@ def run(name: str) -> None:
     
     # train and evaluate DP-SGD model
     print(f"Training DP-SGD for {name} dataset (PSR={PSR}, epsilon={epsilon:.6f}):")
-    r2_stats, rmse_stats, _ = eval_dp_lr(
-        model, optimizer, criterion, data_loader, [x, y],
+    rmse_stats, r2_stats, _ = eval_dp_lr(
+        model, optimizer, criterion, data_loader, (x, y),
         epochs=params['epochs'], epsilon=epsilon,
         norm_clip=params['norm_clip'], batch_size=params['batch_size']
     )

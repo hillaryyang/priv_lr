@@ -3,6 +3,11 @@
 private.py
 ==========
 Anisotropic noise estimation for PAC membership privacy.
+
+Unlike DPSGD's isotropic (uniform) noise, PAC-LR is data-aware: it uses SVD to
+identify per-dimension sensitivity and calibrates noise accordingly, so dimensions
+with higher variance receive more perturbation. This produces a tighter
+privacy-utility trade-off on the membership inference task.
 """
 
 import numpy as np
@@ -10,7 +15,16 @@ import torch
 from numpy.linalg import svd
 
 def get_samples(X: torch.Tensor, y: torch.Tensor, n_samples: int) -> tuple[torch.Tensor, torch.Tensor]:
-    """Get n samples from provided dataset"""
+    """
+    Draw a random subset of n_samples rows without replacement.
+
+    Args:
+        X, y: feature and target
+        n_samples: number of rows to sample
+
+    Returns:
+        (X[idx], y[idx]): sampled feature/target
+    """
     idx = np.random.choice(X.shape[0], n_samples, replace=False)
     return X[idx], y[idx]
 
@@ -23,16 +37,18 @@ def compute_basis(
     Learn a projection basis (V^T) via SVD to identify the principal
     directions of variance in the mechanism's output space.
 
+    1. Run mechanism on 10000 random half-subsets of the training data
+    2. Stack outputs into a matrix, center, and compute SVD
+    3. Return V^T — rows are the principal directions of output variance
+
     Args:
-        data: [train_x, train_y]
+        data: (train_x, train_y) tensors
         mechanism: algorithm to be privatized
-        alpha: optional regularization parameter
+        alpha: Ridge/Lasso regularization strength (prevents numerical instability in noise calibration)
 
     Returns:
-        VT: numpy array decomposition capturing
-            principal directions of variance
+        VT: right singular vectors of shape (d, d) capturing principal directions of variance
     """
-
     train_x, train_y = data
     n_samples = int(0.5 * len(train_x)) # n = half the dataset each trial
     outputs = []
@@ -60,23 +76,23 @@ def membership_privacy(
     verbose: bool = True,
 ) -> dict[int, float]:
     """
-    Estimate per-dimension noise. 
-    1. Construct two neighboring datasets for each point i
-    2. Run mechanism on both and measure per-dimension output difference
-    3. Iterate until variance converges per dimension (threshold 0.001)
-    4. Calculate anisotropic noise (noise[d]) analytically 
+    Estimate per-dimension noise bounds for PAC membership privacy.
+
+    1. Construct two neighboring datasets A and B for each training point i
+    2. Run mechanism on both and measure per-dimension squared output difference
+    3. Iterate until variance estimates converge per dimension (threshold eta)
+    4. Calibrate anisotropic noise analytically: noise[d] = (√Var[d] × Σ√Var) / (4 × MI)
 
     Args:
-        data: [train_x, train_y] tensors
+        data: (train_x, train_y) tensors
         mechanism: black-box algorithm returning (model, weights)
-        mi: Mutual Information variable used in noise calculation
-        alpha: Optional regularization parameter
-        eta: Per-dimension convergence threshold (default 1e-3)
-        verbose: Logging condition
+        mi: Mutual Information bound used in noise calibration
+        alpha: Ridge/Lasso regularization strength (prevents numerical instability in noise calibration) passed to mechanism
+        eta: per-dimension convergence threshold (default 1e-3)
+        verbose: if True, print a message when estimation finishes
 
     Returns:
-        noise_max: dict mapping dimension index to 
-                   noise estimate for that dimension
+        noise_max: dict mapping dimension index to worst-case noise std across all training points
     """
     VT = compute_basis(data, mechanism, alpha) # get projection matrix VT
     train_x, train_y = data # unpack data
@@ -139,7 +155,15 @@ def membership_privacy(
 
 def privatize(output: np.ndarray, learned_noise: dict[int, float]) -> np.ndarray:
     """
-    Add the estimated noise to the output
+    Add learned anisotropic Gaussian noise to model weights.
+    Each dimension is perturbed independently with its own noise scale.
+
+    Args:
+        output: flattened weight array to perturb
+        learned_noise: dict mapping dimension index to noise std
+
+    Returns:
+        output with per-dimension Gaussian noise added in-place
     """
     scales = np.array([learned_noise[idx] for idx in range(len(output))])
     output += np.random.normal(0, scale=scales)
