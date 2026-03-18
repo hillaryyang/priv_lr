@@ -5,8 +5,7 @@ grid_search.py
 Grid search over hyperparameters (epochs, norm clip, batch size, learning rate) to find
 the best hyperparameter combinations for DPSGD-LR on each dataset and privacy level
 
-Usage:
-    python grid_search.py -d [lenses | concrete | auto]
+Usage: python grid_search.py -d [concrete | lenses | auto]
 """
 
 import ssl
@@ -14,17 +13,14 @@ import warnings
 warnings.simplefilter("ignore")
 
 import sys
-import argparse
 sys.path.append('../')
-sys.path.append('../../')
 
 import torch.nn as nn
 from itertools import product
 import torch.optim as optim
-from torch.utils.data import DataLoader
 
 from lr_dp import lrmodel, eval_dp_lr, psr_to_epsilon, DELTA
-from data_loader import load_dataset, _LOADERS
+from data_loader import load_dataset, parse_datasets, _LOADERS
 
 ssl._create_default_https_context = ssl._create_unverified_context
 
@@ -49,7 +45,7 @@ def run_grid_search(name: str) -> None:
 
     print(f"Grid search for {name} dataset (PSR={PSR}, epsilon={epsilon:.6f})")
 
-    best_rmse = float('inf') # initialize as negative infinity for tracking
+    best_rmse = float('inf') # initialize as very small value for tracking
     best_params = None # initialize best parameters
 
     for (epoch, nc, batch, lr) in combos: # iterate over all combinations
@@ -58,11 +54,10 @@ def run_grid_search(name: str) -> None:
         optimizer = optim.SGD(model.parameters(), lr)
         criterion = nn.MSELoss()
 
-        print(f"Training epochs={epoch}, norm_clip={nc}, batch_size={batch}, learning_rate={lr}")
-        _, rmse_stats, _ = eval_dp_lr(
+        rmse_stats, _, _ = eval_dp_lr(
             model, optimizer, criterion, data_loader, [x, y],
             epochs=epoch, epsilon=epsilon, norm_clip=nc, batch_size=batch
-        )
+        ) # run evaluation
 
         rmse_mean, rmse_std, rmse_med = rmse_stats # store results for this run
 
@@ -85,15 +80,5 @@ def run_grid_search(name: str) -> None:
           f"median={best_params['rmse_med']}")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="DP-SGD grid search")
-    parser.add_argument(
-        "--dataset",
-        choices=list(_LOADERS),
-        default=None,
-        help="Dataset to run (default: all)"
-    )
-    args = parser.parse_args()
-
-    datasets = [args.dataset] if args.dataset else list(_LOADERS)
-    for name in datasets:
+    for name in parse_datasets("DP-SGD grid search"):
         run_grid_search(name)

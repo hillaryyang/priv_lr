@@ -11,7 +11,7 @@ def privatize(
 ) -> tuple:
     """
     Opacus updates training objects with DP-compatible versions that:
-    1. use Poisson sampling from dataloader
+    1. Poisson sample from dataloader
     2. clip per-sample gradients to norm_clip
     3. calculate/add Gaussian noise scaled to meet target epsilon
 
@@ -21,7 +21,7 @@ def privatize(
         epsilon, delta: DP privacy budget and failure probability (privacy params)
         
     Returns:
-        model, optimizer, dataloader: DP versions
+        model, optimizer, dataloader: Privatized versions of training objects
     """
 
     privacy_engine = PrivacyEngine()
