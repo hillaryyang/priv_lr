@@ -1,60 +1,74 @@
-# Private LR
-This repository implements **private linear regression models**, comparing **Differential Privacy (DP)** to **PAC (Probably Approximately Correct) Privacy** and a non-private baseline. [Differential privacy](https://link.springer.com/chapter/10.1007/11787006_1) is a commonly accepted privacy notion, while the [PAC Privacy framework](https://eprint.iacr.org/2024/718) is more recent.
+# Private Linear Regression
 
-We use Python to implement:
-* **DPSGD-LR** — DP stochastic gradient descent using [Opacus](https://opacus.ai/)
-* **PAC-LR** — PAC Privacy framework with custom anisotropic noise estimation
-* **OLS baseline** — Non-private scikit-learn linear regression
+This repository implements and compares three linear regression models under a **membership inference threat model**: a non-private OLS baseline, **DPSGD-LR** (Differential Privacy via [Opacus](https://opacus.ai/)), and **PAC-LR** (PAC Privacy with custom anisotropic noise estimation).
 
-Models are evaluated on the **membership inference task**, where an attacker attempts to infer whether a given point was included in training. Utility is quantified via R² and RMSE, averaged across multiple trials to capture both stability and overall performance.
+[Differential Privacy](https://link.springer.com/chapter/10.1007/11787006_1) is a well-established privacy framework; the [PAC Privacy framework](https://eprint.iacr.org/2024/718) is more recent and data-aware.
 
-Privacy is parameterized by **posterior success rate (PSR)** — the adversary's probability of correct membership inference. Since ε can be analytically translated into PSR, the two methods can be compared under identical conditions.
+## Threat Model
+
+The adversary performs a **membership inference attack**: given a trained model and a data point, they attempt to determine whether that point was included in the training set. The adversary's advantage is measured by **Posterior Success Rate (PSR)**, which is the probability of a correct membership decision. PSR = 0.5 is random guessing (full privacy); PSR = 1.0 means the adversary always succeeds (no privacy).
+
+## Privacy Parameterization
+
+Both mechanisms are evaluated at the same PSR to enable direct comparison. We chose seven distinct, evenly spaced PSRs (0.52, 0.55, 0.65, 0.75, 0.85, 0.95, 0.98) in order to test a variety of privacy levels. 
+
+**DPSGD-LR** uses (ε, δ)-DP Differential Privacy, where epsilon (ε) is the privacy parameter and delta (δ) is the probability of a privacy breach. ε which can be derived analytically from PSR [Xiao 2023](https://arxiv.org/abs/2210.03458):
+
+```
+ε = ln((1 - δ) / (1 - PSR) - 1)
+```
 
 ## Privacy Mechanisms
 
+### DPSGD-LR
+
+Privacy is enforced during the SGD training loop via Opacus. Each epoch, for each batch:
+
+1. Compute per-sample gradients
+2. Clip each gradient to norm threshold C (bounding any single point's influence)
+3. Aggregate and add Gaussian noise scaled to C and ε
+4. Update parameters; Opacus tracks the cumulative privacy budget
+
 ### PAC-LR
-Unlike DPSGD-LR's isotropic (uniform) noise, PAC-LR is data-aware: it uses SVD to identify per-dimension sensitivity and calibrates noise accordingly. The algorithm:
-1. Empirically estimate per-dimension sensitivity using projection matrix V^T from SVD
+
+Privacy is enforced by perturbing the final OLS weights with **anisotropic** (data-aware) Gaussian noise:
+
+1. Empirically estimate per-dimension sensitivity using projection matrix V^T from singular value decomposition (VSD)
 2. Iteratively compute noise based on the Mutual Information (MI) privacy parameter until convergence threshold η is reached
 3. Project the calibrated noise back to the original feature space
 4. Apply Gaussian perturbation
 
-### DPSGD-LR
-Privacy via training loop — each epoch, for each batch:
-1. Compute per-sample gradients
-2. Clip gradients to threshold C (bounding influence of any single data point)
-3. Aggregate and perturb with Gaussian noise scaled to C and ε
-4. Update parameters and track privacy budget (via Opacus)
+Because noise is scaled to each dimension's empirical sensitivity, PAC-LR achieves a tighter privacy-utility trade-off than isotropic mechanisms (DP).
+
+## Evaluation Methodology
+
+All three models are evaluated via **bootstrap sampling** (50% of training data, without replacement) to simulate realistic variability. Each runner (`run_np.py`, `run_dp.py`, `run_pac.py`) loops until the cumulative RMSE mean stabilizes within convergence threshold η = 0.01 (checked every 50 trials). Final results report RMSE/R^2 evaluation statistics, including the mean, standard deviation, and median.
 
 ## Repository Structure
 
 ```
-├── data_loader.py          # Dataset loading and preprocessing
+├── data_loader.py          # Dataset loading, preprocessing, and normalization
 ├── datasets/
-│   ├── lenses.csv          # 24 instances, 4 features — contact lens class
-│   ├── concrete.csv        # 103 instances, 7 features — compressive strength (MPa)
-│   └── auto.csv            # 201 instances, 15 features — car price (USD)
+│   ├── lenses.csv          # Contact lenses dataset
+│   ├── concrete.csv        # Concrete dataset
+│   └── auto.csv            # Automobiles dataset
 ├── np/
-│   ├── lr_np.py            # OLS evaluation
+│   ├── lr_np.py            # OLS bootstrap evaluation
 │   └── run_np.py           # Runner: non-private baseline
 ├── dp/
-│   ├── lr_dp.py            # DPSGD-LR training loop
+│   ├── lr_dp.py            # DPSGD-LR training and convergence loop
 │   ├── private.py          # Opacus privatization wrapper
 │   ├── run_dp.py           # Runner: DPSGD-LR
-│   └── grid_search.py      # Hyperparameter search for DPSGD-LR
+│   └── grid_search.py      # Hyperparameter search (epochs, clipping norm, batch size, lr)
 └── pac/
-    ├── lr_pac.py           # PAC-LR training loop
-    ├── private.py          # Anisotropic noise estimation + SVD
-    ├── run_pac.py          # Runner: PAC-LR
-    └── alpha_search.py     # Hyperparameter search for Ridge/Lasso alpha regularization parameter
+    ├── lr_pac.py           # PAC-LR training and convergence loop
+    ├── private.py          # SVD basis estimation + anisotropic noise calibration
+    └── run_pac.py          # Runner: PAC-LR
 ```
 
 ## Installation
-1. Clone the repository:
-```bash
-git clone https://github.com/hillaryyang/priv_lr.git
-cd priv_lr
-```
+
+1. Download and `cd` into the repository
 
 2. Create and activate a virtual environment:
 ```bash
@@ -69,48 +83,42 @@ pip install -r requirements.txt
 
 ## Usage
 
-Each model has a runner script with an optional `--dataset` flag. Omitting it runs all three datasets.
+Each runner accepts an optional `-d` flag to select a dataset to run by name.
 
 **Non-private OLS baseline**
 ```bash
 cd np
-python run_np.py                        # run all datasets
-python run_np.py --dataset lenses       # run only lenses
+python run_np.py                  # run all datasets
+python run_np.py -d [concrete | lenses | auto]
 ```
 
 **DPSGD-LR**
 ```bash
 cd dp
-python run_dp.py                        # run all datasets
-python run_dp.py --dataset concrete     # run only concrete
+python run_dp.py                  # run all datasets
+python run_dp.py -d [concrete | lenses | auto] 
 ```
 
 **PAC-LR**
 ```bash
 cd pac
-python run_pac.py                       # run all datasets
-python run_pac.py --dataset auto        # run only automobiles
+python run_pac.py                 # run all datasets
+python run_pac.py -d [concrete | lenses | auto]
 ```
 
-Results (RMSE and R² mean, std. dev, median) are printed to the command line.
+Results (RMSE and R^2 mean, std. dev, median) are printed to the command line.
 
 ## Hyperparameter Search
 
-**DPSGD-LR** — grid search over epochs, clipping norm, and batch size:
+**DPSGD-LR** — grid search over epochs, clipping norm, batch size, and learning rate:
 ```bash
 cd dp
-python grid_search.py --dataset lenses
-```
-
-**PAC-LR** — grid search over Ridge/Lasso regularization parameter α:
-```bash
-cd pac
-python alpha_search.py --dataset lenses
+python grid_search.py -d [concrete | lenses | auto]
 ```
 
 ## Datasets
 
-All datasets are sourced from the [UCI ML Repository](https://archive.ics.uci.edu/) and normalized with `StandardScaler` before training.
+All datasets are sourced from the [UCI ML Repository](https://archive.ics.uci.edu/) and normalized to zero mean and unit variance with `StandardScaler` before training.
 
 | Dataset | Instances | Features | Target |
 |---------|-----------|----------|--------|

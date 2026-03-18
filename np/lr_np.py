@@ -6,7 +6,6 @@ Implement non-private linear regression with scikit-learn
 """
 
 import numpy as np
-import torch
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score, root_mean_squared_error
 

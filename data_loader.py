@@ -9,7 +9,7 @@ Each loader:
 2. Selects relevant feature/target columns
 3. Handles missing values if needed
 4. Applies normalization
-5. Returns reformatted features/target and DataLoader
+5. Returns reformatted features/target and TensorDataset
 
 Datasets (all sourced from the UCI ML Repository)
 - Lenses: 24 instances, 4 features, target = contact lens class

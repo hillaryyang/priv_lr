@@ -85,7 +85,7 @@ def membership_pac(
 
     while not converged: # evaluate until convergence
         # resample training data (bootstrap)
-        sample_x, sample_y = get_samples(train_x, train_y, n_samples=len(train_x))
+        sample_x, sample_y = get_samples(train_x, train_y, n_samples=int(0.5 * len(train_x)))
 
         rmse_sample_list = []
         r2_sample_list = []

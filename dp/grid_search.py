@@ -20,7 +20,7 @@ from itertools import product
 import torch.optim as optim
 
 from lr_dp import lrmodel, eval_dp_lr, psr_to_epsilon, DELTA
-from data_loader import load_dataset, parse_datasets, _LOADERS
+from data_loader import load_dataset, parse_datasets
 
 ssl._create_default_https_context = ssl._create_unverified_context
 
