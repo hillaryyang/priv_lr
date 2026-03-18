@@ -27,7 +27,7 @@ MI = PSR * math.log(2 * PSR) + (1 - PSR) * math.log(2 - 2 * PSR)  # Mutual Infor
 
 def run(name: str) -> None:
     """Load dataset, learn/apply noise, and print RMSE/R2 statistics"""
-    x, y, _ = load_dataset(name, norm=True)
+    x, y, _ = load_dataset(name)
 
     print(f"Training PAC-LR for {name} dataset (PSR={PSR}):")
     rmse_stats, r2_stats, _ = membership_pac((x, y), MI)

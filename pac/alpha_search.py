@@ -29,7 +29,7 @@ def main():
     args = parser.parse_args()
 
     gen_fn, dataset_name = DATASETS[args.dataset]
-    x, y, _ = gen_fn(norm=True)
+    x, y, _ = gen_fn()
 
     post_success = 0.85
     mi = post_success * math.log(2 * post_success) + (1 - post_success) * math.log(2 - 2 * post_success)

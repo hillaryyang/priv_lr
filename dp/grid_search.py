@@ -6,7 +6,7 @@ Grid search over hyperparameters (epochs, norm clip, batch size, learning rate) 
 the best hyperparameter combinations for DPSGD-LR on each dataset and privacy level
 
 Usage:
-    python grid_search.py --dataset [lenses | concrete | auto]
+    python grid_search.py -d [lenses | concrete | auto]
 """
 
 import ssl
@@ -45,7 +45,7 @@ def run_grid_search(name: str) -> None:
     Run grid search for a single dataset given the name
     Return: Prints results and best paramaters found
     """
-    x, y, data_loader = load_dataset(name, norm=True)
+    x, y, data_loader = load_dataset(name)
 
     print(f"Grid search for {name} dataset (PSR={PSR}, epsilon={epsilon:.6f})")
 

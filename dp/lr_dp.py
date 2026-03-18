@@ -1,66 +1,53 @@
 """
-========
-lr_dp.py
-========
 Differentially private SGD linear regression (DPSGD-LR) using Opacus.
 
-Privacy is quantified via epsilon (ε) — smaller ε means stronger privacy and less
-information disclosure risk. ε is derived analytically from posterior success rate (PSR),
-the adversary's probability of correct membership inference, enabling direct comparison
-with PAC-LR under identical privacy conditions.
-
 The algorithm:
-1. Privatize SGD model using Opacus (Poisson sampling, gradient clipping, isotropic noise)
-2. Train privatized model and record predictions (RMSE/R2)
+1. Train fresh SGD model using Opacus privacy (sampling -> gradient clipping -> noise)
+2. Record predictions (RMSE/R2)
 3. Check for convergence within threshold (0.01)
 4. Return overall performance statistics (RMSE/R2)
 """
 
-import math
 import itertools
+import math
+
+import numpy as np
 import torch
 import torch.nn as nn
-import numpy as np
 import torch.optim as optim
+from sklearn.metrics import r2_score, root_mean_squared_error
 from torch.utils.data import DataLoader
 
 from private import privatize
-from sklearn.metrics import r2_score, root_mean_squared_error
 
-DELTA = 1e-3  # fixed delta (probability of privacy breach) used across all experiments
+DELTA = 1e-3 # fixed delta (probability of privacy breach) used across all experiments
 
 def psr_to_epsilon(psr: float, delta: float) -> float:
     """
-    Convert posterior success rate (PSR) to epsilon using a calculated bound:
-        ε = ln((1 - δ) / (1 - PSR) - 1)
+    Convert PSR -> epsilon with formula: ε = ln((1 - δ) / (1 - PSR) - 1)
 
     Args:
         psr: posterior success rate, probability adversary identifies membership
         delta: DP delta parameter, probability of privacy breach (fixed at 1e-3)
 
     Returns:
-        epsilon: corresponding DP epsilon bound
+        epsilon: corresponding DP eps bound
     """
     return math.log((1 - delta) / (1 - psr) - 1)
 
 class lrmodel(nn.Module):
-    """Single-layer PyTorch linear regression model (input_dim → 1 output)."""
+    """Simple PyTorch LR model for DP eval"""
 
     def __init__(self, input_dim: int):
-        """
-        Args:
-            input_dim: number of input features
-        """
+        """Initialize model with input_dim (# of input features)"""
         super(lrmodel, self).__init__()
         self.linear = nn.Linear(input_dim, 1)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Args:
-            x: input tensor of shape (N, input_dim)
-
-        Returns:
-            predictions of shape (N, 1)
+            x: input tensor data
+        Returns: predictions
         """
         return self.linear(x)
 

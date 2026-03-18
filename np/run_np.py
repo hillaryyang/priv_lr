@@ -4,8 +4,7 @@ run_np.py
 =========
 Evaluate non-private OLS linear regression from lr_np.py
 
-Usage:
-    python run_np.py --dataset [concrete | lenses | auto]
+Usage: python run_np.py -d [concrete | lenses | auto]
 """
 
 import sys
@@ -18,7 +17,7 @@ def run(name: str) -> None:
     """Load dataset, fit OLS, and print RMSE/R2 statistics."""
     print(f"Running OLS for {name} dataset...")
     
-    x, y, _ = load_dataset(name, norm=True) # load appropriate dataset
+    x, y, _ = load_dataset(name) # load appropriate dataset
     (rmse_mean, rmse_std, rmse_med), (r2_mean, r2_std, r2_med) = eval_ols(x, y) # unpack stats
 
     # print results
