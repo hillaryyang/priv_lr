@@ -16,8 +16,7 @@ def eval_ols(x: torch.Tensor, y: torch.Tensor, n_trials: int = 10000) -> tuple:
     return aggregate RMSE/R2 statistics across all trials
 
     Args:
-        x: feature matrix
-        y: target vector
+        x, y: feature matrix and target vector
         n_trials: # of trials (default 10k)
 
     Returns:
@@ -26,6 +25,7 @@ def eval_ols(x: torch.Tensor, y: torch.Tensor, n_trials: int = 10000) -> tuple:
     """
     x_np, y_np = np.array(x), np.array(y)
 
+    # sampling info
     n_samples = x_np.shape[0]
     sample_size = int(0.5 * n_samples)
 
@@ -38,7 +38,7 @@ def eval_ols(x: torch.Tensor, y: torch.Tensor, n_trials: int = 10000) -> tuple:
         idx = np.random.choice(n_samples, sample_size, replace=False)
         sample_x, sample_y = x_np[idx], y_np[idx]
 
-        model = LinearRegression()
+        model = LinearRegression() # initialize LinearRegression object
         pred = model.fit(sample_x, sample_y).predict(sample_x) # fit model and get predictions
 
         # record R2/RMSE
