@@ -2,12 +2,10 @@
 =========
 lr_pac.py
 =========
-Linear regression with a PAC membership privacy guarantee (PAC-LR).
+Evaluate linear regression regression with a PAC membership privacy guarantee (PAC-LR)
 
-Privacy is quantified via posterior success rate (PSR) — the adversary's probability
-of correctly identifying whether a point was in the training set (membership inference).
-PSR is converted to a Mutual Information (MI) bound, which calibrates the anisotropic
-noise injected into OLS weights.
+Privacy is quantified via posterior success rate (PSR), which is converted to 
+a Mutual Information (MI) bound, used to calibrate anisotropic noise levels
 
 The algorithm:
 1. Estimate per-dimension noise via membership_privacy() (private.py)
@@ -24,22 +22,21 @@ from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score, root_mean_squared_error
 from private import membership_privacy, privatize, get_samples
 
-
 def run_lr(data: tuple[torch.Tensor, torch.Tensor]) -> tuple:
     """
-    Intermediate OLS mechanism used for PAC training.
+    Helper OLS model used as mechanism in PAC training
 
     Args:
         data: (train_x, train_y) tensors
 
     Returns:
         model: fitted LinearRegression model
-        tot_weights: flattened array of model weights [coef..., intercept]
+        tot_weights: flattened array of model weights
     """
     train_x, train_y = data
 
     model = LinearRegression()
-    model.fit(train_x, train_y)  # simple OLS fit using training data
+    model.fit(train_x, np.array(train_y).ravel())  # simple OLS fit using training data
 
     weight = model.coef_
     intercept = model.intercept_
@@ -50,13 +47,11 @@ def run_lr(data: tuple[torch.Tensor, torch.Tensor]) -> tuple:
 def membership_pac(
     train_data: tuple[torch.Tensor, torch.Tensor],
     mi: float,
-    alpha: float | None = None,
     eta: float = 1e-2,
     n_draws: int = 1000,
-    verbose: bool = True,
 ) -> tuple:
     """
-    Train/evaluate PAC-LR until stabilization, return RMSE/R2 stats.
+    Train/evaluate PAC-LR until stabilization, return RMSE/R2 stats
 
     Noise is estimated once via membership_privacy(), then at each trial:
     - resample the full training set
@@ -66,10 +61,8 @@ def membership_pac(
     Args:
         train_data: (train_x, train_y) tensors
         mi: Mutual Information bound used in noise calibration
-        alpha: Ridge/Lasso regularization strength passed to mechanism (prevents numerical instability)
         eta: convergence threshold on RMSE mean (default 0.01)
         n_draws: noise draws per bootstrap sample (default 1000)
-        verbose: if True, print progress every 10 trials
 
     Returns:
         rmse_stats: [mean, std, median] of RMSE across trials
@@ -78,7 +71,8 @@ def membership_pac(
     """
     train_x, train_y = train_data
 
-    rmse_list = [] # initialize empty lists to track performance
+    # initialize empty lists to track performance
+    rmse_list = []
     r2_list = []
 
     # initialize tracking variables
@@ -87,7 +81,7 @@ def membership_pac(
     trial = 0
 
     # estimate per-dimension noise once before the evaluation loop
-    learned_noise = membership_privacy(train_data, run_lr, mi, alpha=alpha)
+    learned_noise = membership_privacy(train_data, run_lr, mi)
 
     while not converged: # evaluate until convergence
         # resample training data (bootstrap)
@@ -121,7 +115,7 @@ def membership_pac(
                 converged = True
             prev_mean = cur_mean
 
-        if verbose and trial % 10 == 0: # print every 10 trials
+        if trial % 10 == 0: # print every 10 trials
             print(f"Trial: {trial}, RMSE: {cur_mean:.4f}")
 
         trial += 1
