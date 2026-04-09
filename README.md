@@ -110,7 +110,7 @@ Results (RMSE and R^2 mean, std. dev, median) are printed to the command line.
 
 ## Hyperparameter Search
 
-**DPSGD-LR** — grid search over epochs, clipping norm, batch size, and learning rate:
+**DPSGD-LR**: grid search over epochs, clipping norm, batch size, and learning rate:
 ```bash
 cd dp
 python grid_search.py -d [concrete | lenses | auto]
