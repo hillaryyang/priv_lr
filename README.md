@@ -12,13 +12,13 @@ The adversary performs a **membership inference attack**: given a trained model 
 
 Both mechanisms are evaluated at the same PSR to enable direct comparison. We chose seven distinct, evenly spaced PSRs (0.52, 0.55, 0.65, 0.75, 0.85, 0.95, 0.98) in order to test a variety of privacy levels. 
 
-**DPSGD-LR** uses (ε, δ)-DP Differential Privacy, where epsilon (ε) is the privacy parameter and delta (δ) is the probability of a privacy breach. ε which can be derived analytically from PSR [Xiao 2023](https://arxiv.org/abs/2210.03458):
+**DPSGD-LR** uses (ε, δ)-Differential Privacy, where epsilon (ε) is the privacy parameter and delta (δ) is the probability of a privacy breach. ε can be derived analytically from PSR [Xiao 2023](https://arxiv.org/abs/2210.03458):
 
 ```
 ε = ln((1 - δ) / (1 - PSR) - 1)
 ```
 
-## Privacy Mechanisms
+## Privacy Frameworks
 
 ### DPSGD-LR
 
